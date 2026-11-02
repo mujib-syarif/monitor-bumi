@@ -10,7 +10,7 @@
   },
   "observability": { "enabled": true },
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": ["*/5 * * * *", "*/15 * * * *"]
   },
   "d1_databases": [
     {
