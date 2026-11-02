@@ -131,10 +131,15 @@ async function normalizeFeature(
     : magnitude === null ? "Earthquake" : `Magnitude ${magnitude.toFixed(1)} earthquake`;
 
   const candidateUrl = typeof properties.url === "string" ? properties.url : "";
-  const parsedUrl = candidateUrl.startsWith("https://") ? new URL(candidateUrl) : null;
-  const sourceUrl = parsedUrl?.hostname === "earthquake.usgs.gov"
-    ? parsedUrl.toString()
-    : `https://earthquake.usgs.gov/earthquakes/eventpage/${feature.id}/executive`;
+  let sourceUrl = `https://earthquake.usgs.gov/earthquakes/eventpage/${feature.id}/executive`;
+  if (candidateUrl.startsWith("https://")) {
+    try {
+      const parsedUrl = new URL(candidateUrl);
+      if (parsedUrl.hostname === "earthquake.usgs.gov") sourceUrl = parsedUrl.toString();
+    } catch {
+      // Ignore malformed upstream links and use the canonical event URL.
+    }
+  }
 
   return {
     id: feature.id,
@@ -166,8 +171,8 @@ export async function collectUsgsEarthquakes(
 
   try {
     const source = await db.prepare("SELECT enabled FROM sources WHERE id = ?")
-      .bind(SOURCE_ID).run<{ enabled?: number }>();
-    if (source.enabled !== 1) {
+      .bind(SOURCE_ID).first<{ enabled?: number }>();
+    if (source?.enabled !== 1) {
       await db.prepare(
         "UPDATE collector_runs SET finished_at = ?, status = 'skipped', error_code = 'source_disabled' WHERE id = ?"
       ).bind(new Date().toISOString(), runId).run();
