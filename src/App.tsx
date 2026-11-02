@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { WorldMapPanel } from "./components/WorldMapPanel";
-import { demoEvents } from "./data/demo";
 
 type HealthState = "checking" | "online" | "offline";
 type Earthquake = { id: string; title: string; location_name: string | null; magnitude: number | null; occurred_at: string; source_url: string };
@@ -83,14 +82,14 @@ function App() {
 
           <section className="metric-grid" aria-label="Overview metrics">
             {[
-              ["EARTHQUAKES LOADED", earthquakeData ? String(earthquakeData.count) : "--", "⌁"],
-              ["LAST COLLECTION", earthquakeData?.freshness.lastCollectedAt ? relativeTime(earthquakeData.freshness.lastCollectedAt) : "--", "◷"],
-              ["ACTIVE ALERTS", "Disaster feed not connected", "△"],
-              ["NEWS SOURCES", "RSS sources pending approval", "▤"]
-            ].map(([label, detail, symbol]) => (
+              ["EARTHQUAKES LOADED", earthquakeData ? String(earthquakeData.count) : "--", earthquakeData ? "Recent records from USGS" : "Waiting for database setup", "⌁"],
+              ["LAST COLLECTION", earthquakeData?.freshness.lastCollectedAt ? relativeTime(earthquakeData.freshness.lastCollectedAt) : "--", "Last successful collector run", "◷"],
+              ["ACTIVE ALERTS", "--", "GDACS integration pending", "△"],
+              ["NEWS SOURCES", "--", "Approved RSS feeds pending", "▤"]
+            ].map(([label, value, detail, symbol]) => (
               <article className="metric-card" key={label}>
                 <div className="metric-top"><span>{label}</span><span className="metric-symbol">{symbol}</span></div>
-                <strong>--</strong><small>{detail}</small>
+                <strong>{value}</strong><small>{detail}</small>
               </article>
             ))}
           </section>
