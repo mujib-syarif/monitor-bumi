@@ -104,7 +104,7 @@ async function fingerprint(value: unknown): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function normalizeFeature(
+export async function normalizeUsgsFeature(
   feature: UsgsFeature,
   collectedAt: string
 ): Promise<NormalizedEarthquake | null> {
@@ -197,7 +197,7 @@ export async function collectUsgsEarthquakes(
     const normalized: NormalizedEarthquake[] = [];
 
     for (const feature of features) {
-      const item = await normalizeFeature(feature, collectedAt);
+      const item = await normalizeUsgsFeature(feature, collectedAt);
       if (item) normalized.push(item);
     }
 
