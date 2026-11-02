@@ -4,6 +4,8 @@ import { WorldMapPanel } from "./components/WorldMapPanel";
 type Health = "checking" | "online" | "offline";
 type Quake = { id: string; title: string; location_name: string | null; latitude: number; longitude: number; magnitude: number | null; occurred_at: string; source_url: string };
 type Feed = { ok: boolean; count: number; events: Quake[]; freshness: { lastCollectedAt: string | null; stale: boolean } };
+type Disaster = { id: string; title: string; event_type: string; location_name: string | null; latitude: number; longitude: number; severity: string; occurred_at: string; source_url: string };
+type DisasterFeed = { ok: boolean; count: number; events: Disaster[]; freshness: { lastCollectedAt: string | null; stale: boolean } };
 type Source = { id: string; name: string; status: string; attribution?: string };
 const navItems = [{label:"Overview",icon:"◫"},{label:"World Map",icon:"◎"},{label:"Global News",icon:"▤"},{label:"Earthquakes",icon:"⌁"},{label:"Disasters",icon:"△"},{label:"Timeline",icon:"◷"}];
 
@@ -18,6 +20,8 @@ function App() {
   const [activeNav,setActiveNav] = useState("Overview");
   const [mobileMenuOpen,setMobileMenuOpen] = useState(false);
   const [events,setEvents] = useState<Quake[]>([]);
+  const [disasters,setDisasters] = useState<Disaster[]>([]);
+  const [disasterStale,setDisasterStale] = useState(true);
   const [sources,setSources] = useState<Source[]>([]);
   const [lastCollected,setLastCollected] = useState<string|null>(null);
   const [stale,setStale] = useState(true);
@@ -26,14 +30,17 @@ function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [healthRes,quakeRes,sourceRes] = await Promise.all([fetch("/api/health"),fetch("/api/earthquakes?limit=100"),fetch("/api/sources")]);
+      const [healthRes,quakeRes,disasterRes,sourceRes] = await Promise.all([fetch("/api/health"),fetch("/api/earthquakes?limit=100"),fetch("/api/disasters?limit=100"),fetch("/api/sources")]);
       if (!healthRes.ok) throw new Error("API unavailable");
       setHealth("online");
-      if (!quakeRes.ok || !sourceRes.ok) throw new Error("Dashboard API unavailable");
+      if (!quakeRes.ok || !disasterRes.ok || !sourceRes.ok) throw new Error("Dashboard API unavailable");
       const feed = await quakeRes.json() as Feed;
+      const disasterFeed = await disasterRes.json() as DisasterFeed;
       const registry = await sourceRes.json() as {sources?:Source[]};
-      if (!feed.ok || !Array.isArray(feed.events)) throw new Error("Invalid earthquake response");
+      if (!feed.ok || !Array.isArray(feed.events) || !disasterFeed.ok || !Array.isArray(disasterFeed.events)) throw new Error("Invalid dashboard response");
       setEvents(feed.events);
+      setDisasters(disasterFeed.events);
+      setDisasterStale(disasterFeed.freshness?.stale ?? true);
       setSources(Array.isArray(registry.sources) ? registry.sources : []);
       setLastCollected(feed.freshness?.lastCollectedAt ?? null);
       setStale(feed.freshness?.stale ?? true);
@@ -83,7 +90,7 @@ function App() {
           <div className="page-heading"><div><div className="eyebrow">GLOBAL SITUATIONAL AWARENESS</div><h1>{activeNav==="Overview"?"World overview":activeNav}</h1><p>Monitor global developments from one connected workspace.</p></div><div className="date-chip"><span className="date-dot"/>{stale?"USGS DATA PENDING":"USGS DATA FRESH"}</div></div>
           <div className={`data-banner ${dataError?"data-banner-error":""}`}><span className="data-banner-label">{dataError?"DATA UNAVAILABLE":"PIPELINE STATUS"}</span><span>{dataError?"Dashboard data could not be loaded. Check API availability and D1 database setup.":stale?"USGS collector is configured, but no recent successful collection is recorded. Local/remote database setup may still be pending.":"Earthquake records are being served from the USGS collector database. Disaster and news feeds are not enabled yet."}</span></div>
           <section className="metric-grid" aria-label="Overview metrics">
-            {[["EARTHQUAKES",String(events.length),stale?"No recent successful collection":"Stored USGS records","⌁"],["ACTIVE ALERTS","--","Disaster feed not connected","△"],["NEWS SOURCES",String(sources.filter(s=>s.id==="rss"&&s.status==="connected").length),"Approved RSS feeds","▤"],["LAST COLLECTION",formatUtc(lastCollected),"USGS collector","◷"]].map(([label,value,detail,symbol])=><article className="metric-card" key={label}><div className="metric-top"><span>{label}</span><span className="metric-symbol">{symbol}</span></div><strong className={label==="LAST COLLECTION"?"metric-time":""}>{value}</strong><small>{detail}</small></article>)}
+            {[["EARTHQUAKES",String(events.length),stale?"No recent successful collection":"Stored USGS records","⌁"],["ACTIVE ALERTS",String(disasters.filter(event=>event.severity==="Red"||event.severity==="Orange").length),disasterStale?"GDACS data pending":"Red and orange GDACS alerts","△"],["NEWS SOURCES",String(sources.filter(s=>s.id==="rss"&&s.status==="connected").length),"Approved RSS feeds","▤"],["LAST COLLECTION",formatUtc(lastCollected),"USGS collector","◷"]].map(([label,value,detail,symbol])=><article className="metric-card" key={label}><div className="metric-top"><span>{label}</span><span className="metric-symbol">{symbol}</span></div><strong className={label==="LAST COLLECTION"?"metric-time":""}>{value}</strong><small>{detail}</small></article>)}
           </section>
           <section className="dashboard-grid">
             <article className="panel map-panel"><div className="panel-heading"><div><span className="eyebrow">GEOSPATIAL VIEW</span><h2>Global activity map</h2></div><span className="panel-tag">MAP PREVIEW</span></div><WorldMapPanel/><div className="map-legend"><span><i className="legend-blue"/> Earthquake</span><span><i className="legend-orange"/> Disaster</span><span><i className="legend-violet"/> News</span></div></article>
@@ -92,7 +99,7 @@ function App() {
               <div className="panel-footnote">{events.length} stored record(s) · Credit: U.S. Geological Survey</div>
             </article>
           </section>
-          <section className="panel source-panel"><div className="panel-heading"><div><span className="eyebrow">INGESTION PIPELINE</span><h2>Data source status</h2></div><span className="panel-tag">SOURCE REGISTRY</span></div><div className="source-grid">{sources.map(source=><div className="source-item" key={source.id}><span className={`source-indicator ${source.id==="usgs"&&!stale?"source-active":"pending"}`}/><div><strong>{source.name}</strong><small>{source.attribution??"Status from source registry"}</small></div><span className="source-state">{source.id==="usgs"?usgsState:source.status==="connected"?"CONNECTED":source.status==="not_configured"?"NOT CONFIGURED":"NOT CONNECTED"}</span></div>)}</div></section>
+          <section className="panel source-panel"><div className="panel-heading"><div><span className="eyebrow">INGESTION PIPELINE</span><h2>Data source status</h2></div><span className="panel-tag">SOURCE REGISTRY</span></div><div className="source-grid">{sources.map(source=><div className="source-item" key={source.id}><span className={`source-indicator ${source.id==="usgs"&&!stale?"source-active":"pending"}`}/><div><strong>{source.name}</strong><small>{source.attribution??"Status from source registry"}</small></div><span className="source-state">{source.id==="usgs"?usgsState:source.status==="connected"?"CONNECTED":source.status==="not_configured"?"NOT CONFIGURED":source.status==="configured"?"CONFIGURED":"NOT CONNECTED"}</span></div>)}</div></section>
           <footer className="page-footer"><span>MONITOR BUMI · GLOBAL MONITORING PLATFORM</span><span>{updatedAt? `UPDATED ${formatUtc(updatedAt)}`:"WAITING FOR API"}</span></footer>
         </div>
       </section>
