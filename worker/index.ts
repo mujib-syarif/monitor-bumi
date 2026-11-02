@@ -1,9 +1,4 @@
-import { collectUsgsEarthquakes, type EarthquakeDatabase } from "./usgs";
-
-interface D1Statement extends ReturnType<EarthquakeDatabase["prepare"]> {
-  all<T = unknown>(): Promise<{ results: T[] }>;
-  first<T = unknown>(): Promise<T | null>;
-}
+import { collectUsgsEarthquakes, type D1Statement, type EarthquakeDatabase } from "./usgs";
 
 interface D1Database extends EarthquakeDatabase {
   prepare(query: string): D1Statement;
