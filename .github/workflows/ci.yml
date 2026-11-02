@@ -21,6 +21,8 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
+      - name: Local D1 migration smoke test
+        run: npm run db:test:local
       - name: Typecheck frontend
         run: npm run typecheck
       - name: Typecheck Worker
