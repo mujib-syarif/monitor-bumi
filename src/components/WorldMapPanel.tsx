@@ -12,8 +12,7 @@ export function WorldMapPanel() {
       container: containerRef.current,
       style: styleUrl,
       center: [15, 22],
-      zoom: 1.15,
-      attributionControl: true
+      zoom: 1.15
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
