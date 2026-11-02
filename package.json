@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:worker": "wrangler dev",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty",
     "typecheck:worker": "tsc --noEmit --strict --target ES2022 --module ESNext --moduleResolution Bundler --lib ES2022,DOM worker/index.ts worker/usgs.ts",
+    "db:migrate:local": "wrangler d1 migrations apply monitor-bumi --local",
+    "db:migrations:list:local": "wrangler d1 migrations list monitor-bumi --local",
+    "db:check:local": "wrangler d1 execute monitor-bumi --local --command \"SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name;\"",
     "deploy:worker": "wrangler deploy"
   },
   "dependencies": {
