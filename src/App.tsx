@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { WorldMapPanel } from "./components/WorldMapPanel";
 
 type HealthState = "checking" | "online" | "offline";
-type Earthquake = { id: string; title: string; location_name: string | null; magnitude: number | null; occurred_at: string; source_url: string };
+type Earthquake = { id: string; title: string; location_name: string | null; latitude: number; longitude: number; magnitude: number | null; occurred_at: string; source_url: string };
 type EarthquakeResponse = { ok: boolean; count: number; events: Earthquake[]; freshness: { lastCollectedAt: string | null; stale: boolean }; source: { attribution: string } };
 function relativeTime(value: string): string { const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 60000)); if (!Number.isFinite(minutes)) return "Unknown time"; if (minutes < 1) return "Just now"; if (minutes < 60) return minutes + " min ago"; if (minutes < 1440) return Math.floor(minutes / 60) + " hr ago"; return Math.floor(minutes / 1440) + " days ago"; }
 
