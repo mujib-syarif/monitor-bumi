@@ -97,7 +97,7 @@ function App() {
           <section className="dashboard-grid">
             <article className="panel map-panel">
               <div className="panel-heading"><div><span className="eyebrow">GEOSPATIAL VIEW</span><h2>Global activity map</h2></div><span className="panel-tag">MAP PREVIEW</span></div>
-              <WorldMapPanel />
+              <WorldMapPanel earthquakes={earthquakeData?.events ?? []} />
               <div className="map-legend"><span><i className="legend-blue" /> Earthquake</span><span><i className="legend-orange" /> Disaster</span><span><i className="legend-violet" /> News</span></div>
             </article>
 
