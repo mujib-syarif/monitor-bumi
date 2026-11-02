@@ -3,6 +3,10 @@ import { WorldMapPanel } from "./components/WorldMapPanel";
 import { demoEvents } from "./data/demo";
 
 type HealthState = "checking" | "online" | "offline";
+type Earthquake = { id: string; title: string; location_name: string | null; magnitude: number | null; occurred_at: string; source_url: string };
+type EarthquakeResponse = { ok: boolean; count: number; events: Earthquake[]; freshness: { lastCollectedAt: string | null; stale: boolean }; source: { attribution: string } };
+function relativeTime(value: string): string { const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 60000)); if (!Number.isFinite(minutes)) return "Unknown time"; if (minutes < 1) return "Just now"; if (minutes < 60) return minutes + " min ago"; if (minutes < 1440) return Math.floor(minutes / 60) + " hr ago"; return Math.floor(minutes / 1440) + " days ago"; }
+
 
 const navItems = [
   { label: "Overview", icon: "◫" },
@@ -15,21 +19,25 @@ const navItems = [
 
 function App() {
   const [health, setHealth] = useState<HealthState>("checking");
+  const [earthquakeData, setEarthquakeData] = useState<EarthquakeResponse | null>(null);
   const [activeNav, setActiveNav] = useState("Overview");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
-    fetch("/api/health")
-      .then((response) => {
-        if (!response.ok) throw new Error("API unavailable");
-        return response.json();
-      })
-      .then(() => active && setHealth("online"))
-      .catch(() => active && setHealth("offline"));
-    return () => { active = false; };
+    const load = async () => {
+      try {
+        const [healthResponse, dataResponse] = await Promise.all([fetch("/api/health"), fetch("/api/earthquakes?limit=100")]);
+        if (!healthResponse.ok || !dataResponse.ok) throw new Error("API unavailable");
+        const data = await dataResponse.json() as EarthquakeResponse;
+        if (!data.ok || !Array.isArray(data.events)) throw new Error("Invalid API response");
+        if (active) { setHealth("online"); setEarthquakeData(data); }
+      } catch { if (active) setHealth("offline"); }
+    };
+    void load();
+    const interval = window.setInterval(() => void load(), 60000);
+    return () => { active = false; window.clearInterval(interval); };
   }, []);
-
   return (
     <main className="app-shell">
       <aside className={`sidebar ${mobileMenuOpen ? "sidebar-open" : ""}`}>
@@ -68,15 +76,15 @@ function App() {
         <div className="page-content">
           <div className="page-heading">
             <div><div className="eyebrow">GLOBAL SITUATIONAL AWARENESS</div><h1>{activeNav === "Overview" ? "World overview" : activeNav}</h1><p>Monitor global developments from one connected workspace.</p></div>
-            <div className="date-chip"><span className="date-dot" /> PROTOTYPE ENVIRONMENT</div>
+            <div className="date-chip"><span className="date-dot" /> {earthquakeData ? "USGS DATA CONNECTED" : "AWAITING LIVE DATA"}</div>
           </div>
 
-          <div className="demo-banner"><span className="demo-badge">DEMO</span><span>Prototype preview. Cards and map markers are illustrative, not live intelligence or verified reports.</span></div>
+          {!earthquakeData && <div className="demo-banner"><span className="demo-badge">SETUP</span><span>Live data is waiting for database setup and the first collector run. Sample records are not shown as real events.</span></div>}
 
           <section className="metric-grid" aria-label="Overview metrics">
             {[
-              ["GLOBAL EVENTS", "Waiting for live data integration", "◈"],
-              ["EARTHQUAKES", "USGS collector not connected", "⌁"],
+              ["EARTHQUAKES LOADED", earthquakeData ? String(earthquakeData.count) : "--", "⌁"],
+              ["LAST COLLECTION", earthquakeData?.freshness.lastCollectedAt ? relativeTime(earthquakeData.freshness.lastCollectedAt) : "--", "◷"],
               ["ACTIVE ALERTS", "Disaster feed not connected", "△"],
               ["NEWS SOURCES", "RSS sources pending approval", "▤"]
             ].map(([label, detail, symbol]) => (
@@ -97,15 +105,16 @@ function App() {
             <article className="panel events-panel">
               <div className="panel-heading"><div><span className="eyebrow">LATEST INTELLIGENCE</span><h2>Recent events</h2></div><button className="text-button" type="button" onClick={() => setActiveNav("Timeline")}>View timeline</button></div>
               <div className="event-list">
-                {demoEvents.map((event) => (
-                  <div className="event-item" key={event.id}>
-                    <span className={`event-marker marker-${event.category.toLowerCase()}`} />
-                    <div className="event-copy"><div className="event-meta"><span>{event.category}</span><span>{event.time}</span></div><strong>{event.title}</strong><small>{event.location} · {event.source}</small></div>
-                    <span className={`severity severity-${event.severity.toLowerCase()}`}>{event.severity}</span>
-                  </div>
+                {earthquakeData?.events.slice(0, 8).map((event) => (
+                  <a className="event-item" href={event.source_url} key={event.id} target="_blank" rel="noreferrer">
+                    <span className="event-marker marker-earthquake" />
+                    <div className="event-copy"><div className="event-meta"><span>{event.magnitude === null ? "MAGNITUDE N/A" : "MAGNITUDE " + event.magnitude.toFixed(1)}</span><span>{relativeTime(event.occurred_at)}</span></div><strong>{event.title}</strong><small>{event.location_name ?? "Location unavailable"} · USGS</small></div>
+                    <span className="severity severity-moderate">OPEN</span>
+                  </a>
                 ))}
+                {(!earthquakeData || earthquakeData.events.length === 0) && <div className="empty-events"><strong>Waiting for live earthquake records</strong><small>Sample events are hidden until real data is available.</small></div>}
               </div>
-              <div className="panel-footnote">Illustrative entries only · No live reports loaded</div>
+              <div className="panel-footnote">{earthquakeData?.source.attribution ?? "USGS attribution pending"} · Times shown in UTC</div>
             </article>
           </section>
 
@@ -121,7 +130,7 @@ function App() {
               ))}
             </div>
           </section>
-          <footer className="page-footer"><span>MONITOR BUMI · GLOBAL MONITORING PLATFORM</span><span>PROTOTYPE · DEMO DATA ONLY</span></footer>
+          <footer className="page-footer"><span>MONITOR BUMI · GLOBAL MONITORING PLATFORM</span><span>{earthquakeData ? "USGS DATA · ATTRIBUTION REQUIRED" : "LIVE DATA NOT CONNECTED"}</span></footer>
         </div>
       </section>
     </main>
