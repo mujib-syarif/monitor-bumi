@@ -58,7 +58,21 @@ function App() {
         <div className="brand"><div className="brand-mark">MB</div><div><strong>MONITOR BUMI</strong><span>GLOBAL INTELLIGENCE</span></div></div>
         <div className="nav-caption">WORKSPACE</div>
         <nav className="main-nav" aria-label="Main navigation">
-          {navItems.map(item => <button className={`nav-item ${activeNav===item.label?"active":""}`} key={item.label} onClick={()=>{setActiveNav(item.label);setMobileMenuOpen(false);}} type="button}><span className="nav-icon">{item.icon}</span>{item.label}{item.label==="Overview"&&<span className="nav-live-dot"/>}</button>)}
+          {navItems.map((item) => (
+            <button
+              className={`nav-item ${activeNav === item.label ? "active" : ""}`}
+              key={item.label}
+              onClick={() => {
+                setActiveNav(item.label);
+                setMobileMenuOpen(false);
+              }}
+              type="button"
+            >
+              <span className="nav-icon">{item.icon}</span>
+              {item.label}
+              {item.label === "Overview" ? <span className="nav-live-dot" /> : null}
+            </button>
+          ))}
         </nav>
         <div className="sidebar-bottom"><div className="access-card"><span className="access-icon">◈</span><div><strong>Private workspace</strong><span>Personal monitoring</span></div></div><span className="sidebar-version">MONITOR BUMI · v0.1.0</span></div>
       </aside>
