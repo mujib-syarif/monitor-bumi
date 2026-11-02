@@ -25,6 +25,8 @@ jobs:
         run: npm run db:test:local
       - name: USGS collector unit tests
         run: npm run test:usgs
+      - name: GDACS collector unit tests
+        run: npm run test:gdacs
       - name: Typecheck frontend
         run: npm run typecheck
       - name: Typecheck Worker
