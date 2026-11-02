@@ -19,7 +19,9 @@ function App() {
   const [health,setHealth] = useState<Health>("checking");
   const [activeNav,setActiveNav] = useState("Overview");
   const [mobileMenuOpen,setMobileMenuOpen] = useState(false);
-  const [events,setEvents] = useState<Quake[]>([]);\n  const [disasters,setDisasters] = useState<Disaster[]>([]);\n  const [disasterStale,setDisasterStale] = useState(true);
+  const [events,setEvents] = useState<Quake[]>([]);
+  const [disasters,setDisasters] = useState<Disaster[]>([]);
+  const [disasterStale,setDisasterStale] = useState(true);
   const [sources,setSources] = useState<Source[]>([]);
   const [lastCollected,setLastCollected] = useState<string|null>(null);
   const [stale,setStale] = useState(true);
@@ -33,9 +35,12 @@ function App() {
       setHealth("online");
       if (!quakeRes.ok || !disasterRes.ok || !sourceRes.ok) throw new Error("Dashboard API unavailable");
       const feed = await quakeRes.json() as Feed;
-      const disasterFeed = await disasterRes.json() as DisasterFeed;\n      const registry = await sourceRes.json() as {sources?:Source[]};
+      const disasterFeed = await disasterRes.json() as DisasterFeed;
+      const registry = await sourceRes.json() as {sources?:Source[]};
       if (!feed.ok || !Array.isArray(feed.events) || !disasterFeed.ok || !Array.isArray(disasterFeed.events)) throw new Error("Invalid dashboard response");
-      setEvents(feed.events);\n      setDisasters(disasterFeed.events);\n      setDisasterStale(disasterFeed.freshness?.stale ?? true);
+      setEvents(feed.events);
+      setDisasters(disasterFeed.events);
+      setDisasterStale(disasterFeed.freshness?.stale ?? true);
       setSources(Array.isArray(registry.sources) ? registry.sources : []);
       setLastCollected(feed.freshness?.lastCollectedAt ?? null);
       setStale(feed.freshness?.stale ?? true);
