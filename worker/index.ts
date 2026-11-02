@@ -1,12 +1,12 @@
 import { collectUsgsEarthquakes, type EarthquakeDatabase } from "./usgs";
 
-interface D1Statement {
-  bind(...values: unknown[]): D1Statement;
+interface D1Statement extends ReturnType<EarthquakeDatabase["prepare"]> {
   all<T = unknown>(): Promise<{ results: T[] }>;
+  first<T = unknown>(): Promise<T | null>;
 }
 
 interface D1Database extends EarthquakeDatabase {
-  prepare(query: string): D1Statement & ReturnType<EarthquakeDatabase["prepare"]>;
+  prepare(query: string): D1Statement;
 }
 
 interface Env {
@@ -70,7 +70,7 @@ export default {
           `).bind(limit).all<Record<string, unknown>>(),
           env.DB.prepare(`
             SELECT finished_at, status FROM collector_runs
-            WHERE source_id = 'usgs' ORDER BY started_at DESC LIMIT 1
+            WHERE source_id = 'usgs' AND status = 'success' ORDER BY started_at DESC LIMIT 1
           `).all<{ finished_at: string | null; status: string }>()
         ]);
         const lastCollectedAt = latestRun.results[0]?.finished_at ?? null;
