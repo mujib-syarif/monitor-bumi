@@ -15,7 +15,8 @@
     "db:check:local": "wrangler d1 execute monitor-bumi --local --command \"SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name;\"",
     "deploy:worker": "wrangler deploy",
     "db:test:local": "node scripts/test-local-d1.mjs",
-    "test:usgs": "node --test scripts/test-usgs-collector.mjs"
+    "test:usgs": "node --test scripts/test-usgs-collector.mjs",
+    "test:gdacs": "node --test scripts/test-gdacs-collector.mjs"
   },
   "dependencies": {
     "echarts": "^6.1.0",
