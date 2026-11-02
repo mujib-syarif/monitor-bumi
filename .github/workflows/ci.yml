@@ -25,3 +25,5 @@ jobs:
         run: npm run typecheck
       - name: Build
         run: npm run build
+      - name: Dependency security audit
+        run: npm audit --audit-level=high
