@@ -6,9 +6,10 @@ This guide connects the Monitor Bumi Worker to its Cloudflare D1 database. It se
 
 - The Worker expects a D1 binding named `DB`.
 - The database name in `wrangler.jsonc` is `monitor-bumi`.
-- The migration files are stored in `database/migrations/`.
+- Migrations are stored in `database/migrations/`.
+- Migration `0002_usgs_earthquakes.sql` adds the USGS update timestamp and registers/enables the USGS source.
 - The `database_id` value is intentionally a placeholder until a D1 database is created.
-- The Worker has a five-minute Cron Trigger configured. It will only collect data after the Worker is deployed with a working D1 binding.
+- A five-minute Cron Trigger is configured. It only collects data after deployment with a working D1 binding.
 
 ## Requirements
 
@@ -17,116 +18,127 @@ This guide connects the Monitor Bumi Worker to its Cloudflare D1 database. It se
 3. Dependencies installed with `npm install`.
 4. A Cloudflare account only if you intend to create or use a remote D1 database.
 
-Do not put Cloudflare API tokens in source files, GitHub commits, chat messages, or `.env` files committed to the repository. Wrangler authentication should be handled through its supported login flow.
+Never put Cloudflare API tokens in source files, GitHub commits, chat messages, or committed `.env` files. Use Wrangler's supported login flow.
 
 ## Step 1 - Create the D1 database
 
-From the repository root, authenticate with Wrangler:
+Authenticate with Wrangler:
 
 ```bash
 npx wrangler login
 ```
 
-Then create the database:
+Create the database in the intended Cloudflare account:
 
 ```bash
 npx wrangler d1 create monitor-bumi
 ```
 
-Wrangler prints a database ID. Copy that ID; it is not a secret, but it is specific to your Cloudflare account.
+Wrangler prints a database ID. Copy it; it is account-specific configuration, not an API secret.
 
 ## Step 2 - Configure the binding
 
-Open `wrangler.jsonc` and replace:
+In `wrangler.jsonc`, replace:
 
 ```jsonc
 "database_id": "REPLACE_AFTER_CREATING_D1_DATABASE"
 ```
 
-with the database ID returned by the create command. Keep the binding name `DB`, database name `monitor-bumi`, and migrations directory unchanged.
+with the ID returned by Wrangler. Keep the binding name `DB`, database name `monitor-bumi`, and migrations directory unchanged.
 
-Do not commit credentials or account tokens. The database ID can be committed as deployment configuration once you have confirmed it belongs to the intended account.
+## Step 3 - Apply migrations locally
 
-## Step 3 - Apply migrations locally first
-
-Install dependencies if needed:
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-Apply the schema to Wrangler's local D1 database:
+Apply all migrations to Wrangler's local D1 database:
 
 ```bash
-npx wrangler d1 migrations apply monitor-bumi --local
+npm run db:migrate:local
 ```
 
-This creates the local schema used for development. It does not change the remote Cloudflare database.
+Check which migrations were applied:
 
-## Step 4 - Run the app locally
+```bash
+npm run db:migrations:list:local
+```
 
-Build the frontend:
+Inspect the local schema:
+
+```bash
+npm run db:check:local
+```
+
+These commands use local storage only. They do not create or modify a remote Cloudflare database.
+
+## Step 4 - Run the Worker locally
+
+Build the frontend assets:
 
 ```bash
 npm run build
 ```
 
-Start the Worker with the local D1 database and built assets:
+Start the Worker with its local D1 binding:
 
 ```bash
-npx wrangler dev
+npm run dev:worker
 ```
 
-Check these endpoints in the local address printed by Wrangler:
+Open the local address printed by Wrangler and inspect:
 
 - `/api/health` - Worker health.
-- `/api/sources` - configured data sources.
-- `/api/earthquakes` - stored USGS earthquake records and collection freshness.
+- `/api/sources` - configured source list.
+- `/api/earthquakes` - stored USGS records and collection freshness.
 
-The local earthquake endpoint may return zero records until the collector has run successfully. A successful build alone does not prove that remote ingestion works.
+The local earthquake endpoint can legitimately return zero records until a scheduled collection has run. The normal frontend Vite command (`npm run dev`) is not a substitute for running the Worker with its D1 binding.
 
 ## Step 5 - Remote migration and deployment
 
-**Pause here until the database ID, account, and deployment target have been reviewed.** These commands change Cloudflare resources.
+**Stop here until the Cloudflare account, database ID, access policy, and deployment target have been reviewed.** The following commands change remote resources.
 
-When explicitly ready, apply migrations to the remote database:
+When explicitly approved, apply migrations to the remote database:
 
 ```bash
 npx wrangler d1 migrations apply monitor-bumi --remote
 ```
 
-Then, after reviewing the Worker configuration and access protection:
+After reviewing access protection and Worker configuration, deployment can be performed separately:
 
 ```bash
 npm run build
-npx wrangler deploy
+npm run deploy:worker
 ```
 
-Do not deploy a public monitoring dashboard until its access policy and operational safeguards have been reviewed. The current project plan requires private access protection before public deployment.
+Do not deploy a public monitoring dashboard until its access policy and operational safeguards have been reviewed.
 
 ## Troubleshooting
 
-### Wrangler says the database cannot be found
+### Wrangler cannot find the database
 
-Confirm that the database ID in `wrangler.jsonc` belongs to the Cloudflare account selected by Wrangler. Confirm the database name is exactly `monitor-bumi`.
+Confirm that the configured database ID belongs to the account selected by Wrangler and that the database name is exactly `monitor-bumi`.
 
 ### `/api/earthquakes` returns a database error
 
-Check that migrations were applied to the same database referenced by the `DB` binding. For local development, use `--local`; for the real account, use `--remote` only after review.
+Confirm migrations were applied to the same database referenced by binding `DB`. Use the local scripts for local development. Use `--remote` only after review.
 
 ### No earthquake records appear
 
-The scheduled collector runs from the deployed Worker's Cron Trigger. A local development session does not prove that the remote schedule is active. Check collector run records and Worker logs before diagnosing the upstream USGS feed.
+The collector is invoked by the deployed Worker's Cron Trigger. A successful local build does not prove remote ingestion. Check collector run records and Worker logs before diagnosing the USGS feed.
 
 ### The map has no basemap
 
-Earthquake records and the basemap are separate systems. A map style provider URL still needs to be selected and configured, with its attribution and usage terms reviewed.
+Earthquake records and the basemap are separate systems. A map style provider URL still needs to be selected and its attribution and usage terms reviewed.
 
 ## Safety checklist
 
 - [ ] Confirm the intended Cloudflare account.
-- [ ] Create the D1 database and copy its ID into `wrangler.jsonc`.
-- [ ] Apply migrations locally and test the Worker locally.
+- [ ] Create the D1 database and configure its ID.
+- [ ] Apply and inspect migrations locally.
+- [ ] Test the Worker locally.
 - [ ] Review remote migration output before confirming it.
 - [ ] Review authentication/access protection before deployment.
 - [ ] Confirm map tile provider attribution and usage limits.
