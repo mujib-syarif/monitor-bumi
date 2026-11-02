@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
+import { Map as MapLibreMap, NavigationControl } from "maplibre-gl";
 
 export function WorldMapPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -8,13 +8,13 @@ export function WorldMapPanel() {
 
   useEffect(() => {
     if (!containerRef.current || !styleUrl || mapRef.current) return;
-    const map = new maplibregl.Map({
+    const map = new MapLibreMap({
       container: containerRef.current,
       style: styleUrl,
       center: [15, 22],
       zoom: 1.15
     });
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
     return () => {
       map.remove();
