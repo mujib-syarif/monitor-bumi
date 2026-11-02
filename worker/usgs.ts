@@ -9,9 +9,11 @@ interface D1Result {
   meta?: { changes?: number };
 }
 
-interface D1Statement {
+export interface D1Statement {
   bind(...values: unknown[]): D1Statement;
   run<T = unknown>(): Promise<D1Result & T>;
+  all<T = unknown>(): Promise<{ results: T[] }>;
+  first<T = unknown>(): Promise<T | null>;
 }
 
 export interface EarthquakeDatabase {
